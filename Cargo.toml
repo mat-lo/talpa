@@ -1,6 +1,6 @@
 [package]
 name = "talpa"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Cloudflare Tunnel route manager"
 license = "MIT"
@@ -8,7 +8,7 @@ repository = "https://github.com/mat-lo/talpa"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
-reqwest = { version = "0.12", features = ["json", "blocking"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "blocking", "rustls-tls"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 anyhow = "1"
