@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 description = "Cloudflare Tunnel route manager"
 license = "MIT"
+repository = "https://github.com/mat-lo/talpa"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
