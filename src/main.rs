@@ -156,7 +156,7 @@ struct IngressRule {
 
 #[derive(Debug, Deserialize)]
 struct TunnelConfigResult {
-    config: TunnelConfigInner,
+    config: Option<TunnelConfigInner>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -225,7 +225,7 @@ impl CfClient {
         Ok(())
     }
 
-    fn get_tunnel_config(&self) -> Result<TunnelConfigInner> {
+    fn get_tunnel_config(&self) -> Result<Option<TunnelConfigInner>> {
         let resp: CfResponse<TunnelConfigResult> = self
             .client
             .get(&self.tunnel_config_url())
@@ -238,7 +238,7 @@ impl CfClient {
             bail!("Failed to get tunnel config: {}", msgs.join(", "));
         }
 
-        Ok(resp.result.context("No config returned")?.config)
+        Ok(resp.result.and_then(|r| r.config))
     }
 
     fn put_tunnel_config(&self, config: TunnelConfigInner) -> Result<()> {
@@ -374,7 +374,14 @@ fn cmd_add(hostname: &str, service: &str) -> Result<()> {
     let cf = CfClient::new(&creds);
 
     print!("  {} Fetching tunnel config...", "→".dimmed());
-    let mut config = cf.get_tunnel_config()?;
+    let mut config = cf.get_tunnel_config()?.unwrap_or(TunnelConfigInner {
+        ingress: vec![IngressRule {
+            hostname: None,
+            service: "http_status:404".to_string(),
+            origin_request: None,
+        }],
+        extra: serde_json::Map::new(),
+    });
     println!(" {}", "ok".green());
 
     if config
@@ -412,7 +419,7 @@ fn cmd_remove(hostname: &str) -> Result<()> {
     let cf = CfClient::new(&creds);
 
     print!("  {} Fetching tunnel config...", "→".dimmed());
-    let mut config = cf.get_tunnel_config()?;
+    let mut config = cf.get_tunnel_config()?.context("Tunnel has no configuration yet")?;
     println!(" {}", "ok".green());
 
     let before = config.ingress.len();
@@ -452,8 +459,9 @@ fn cmd_list() -> Result<()> {
     println!("  Tunnel: {}", creds.tunnel_id.dimmed());
     println!();
 
+    let ingress = config.as_ref().map_or(&[][..], |c| &c.ingress);
     let mut count = 0;
-    for rule in &config.ingress {
+    for rule in ingress {
         match &rule.hostname {
             Some(host) => {
                 println!("  {:<40} → {}", host.cyan(), rule.service.green());
